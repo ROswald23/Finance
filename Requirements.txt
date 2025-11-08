@@ -1,0 +1,19 @@
+pandas
+pandas
+fastapi
+uvicorn[standard]
+SQLAlchemy>=2.0
+psycopg2-binary
+passlib[bcrypt]       # hash de mots de passe
+python-jose[cryptography]  # ou PyJWT; ci-dessous je montre PyJWT, prenez l'un ou l'autre
+PyJWT
+jwt
+pydantic
+pydantic[email]
+yfinance
+tradingview_ta
+numpy
+pyarrow
+fastparquet
+
+
