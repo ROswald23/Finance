@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base layout */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/* Style global du body (en Tailwind) */
+body {
+  @apply m-0 bg-gray-50 text-gray-900 antialiased;
+}
+
+/* Liens (optionnel, tu peux aussi faire ça en Tailwind dans tes composants) */
+a {
+  @apply font-medium text-indigo-600 no-underline;
+}
+a:hover {
+  @apply text-indigo-500;
+}
+
+/* Boutons par défaut (optionnel) */
+button {
+  @apply rounded-lg border border-transparent px-4 py-2 text-sm font-medium
+         bg-gray-900 text-white cursor-pointer transition-colors;
+}
+button:hover {
+  @apply border-indigo-500;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
