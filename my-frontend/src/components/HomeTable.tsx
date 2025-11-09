@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "../lib/api";
 import { useAuth } from "../store/auth";
+import type { WalletRow } from "../types";
 
 
 export default function HomeTable() {
