@@ -5,9 +5,10 @@ import type { Indice } from "../types";
 
 type HomePageProps = {
   onLoginClick: () => void;
+  className?: string;
 };
 
-export default function HomePage({ onLoginClick }: HomePageProps) {
+export default function HomePage({ onLoginClick, className }: HomePageProps) {
   const [data, setData] = useState<Indice[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -31,8 +32,16 @@ export default function HomePage({ onLoginClick }: HomePageProps) {
     };
   }, []);
 
+  const rootClass = [
+    'home-page',
+    'max-w-4xl mx-auto px-4 py-8',
+    className ?? '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   return (
-    <main className="max-w-4xl mx-auto px-4 py-8">
+    <section className={rootClass}>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-semibold">Indices principaux</h2>
@@ -91,6 +100,6 @@ export default function HomePage({ onLoginClick }: HomePageProps) {
           })}
         </div>
       )}
-    </main>
+    </section>
   );
 }
