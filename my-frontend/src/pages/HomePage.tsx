@@ -5,9 +5,10 @@ import type { Indice } from "../types";
 
 type HomePageProps = {
   onLoginClick: () => void;
+  className?: string;
 };
 
-export default function HomePage({ onLoginClick }: HomePageProps) {
+export default function HomePage({ onLoginClick, className }: HomePageProps) {
   const [data, setData] = useState<Indice[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -31,8 +32,16 @@ export default function HomePage({ onLoginClick }: HomePageProps) {
     };
   }, []);
 
+  const rootClass = [
+    'home-page',
+    'max-w-4xl mx-auto px-4 py-8',
+    className ?? '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   return (
-    <main className="max-w-4xl mx-auto px-4 py-8">
+    <section className={rootClass}>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-semibold">Indices principaux</h2>
@@ -40,12 +49,7 @@ export default function HomePage({ onLoginClick }: HomePageProps) {
             Vue d’ensemble du marché avant de vous connecter.
           </p>
         </div>
-        <button
-          onClick={onLoginClick}
-          className="inline-flex items-center px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"
-        >
-          Se connecter
-        </button>
+
       </div>
 
       {loading && <p className="text-gray-600">Chargement…</p>}
@@ -89,8 +93,8 @@ export default function HomePage({ onLoginClick }: HomePageProps) {
               </div>
             );
           })}
-        </div>
+      </div>
       )}
-    </main>
+    </section>
   );
 }
