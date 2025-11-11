@@ -276,6 +276,72 @@ body {
   gap: 1.5rem;
 }
 
+.home-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.home-overview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.home-overview-copy {
+  flex: 1 1 280px;
+  min-width: 240px;
+}
+
+.home-overview-copy h2 {
+  margin: 0.35rem 0 0;
+  font-size: 1.65rem;
+  color: var(--color-slate);
+}
+
+.home-overview-copy p {
+  margin: 0.35rem 0 0;
+  color: var(--color-steel);
+  line-height: 1.6;
+}
+
+.home-overview-kicker {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-olive);
+}
+
+.home-login-button {
+  align-self: flex-start;
+  padding: 0.75rem 1.5rem;
+  border-radius: 999px;
+  border: none;
+  font-size: 0.95rem;
+  font-weight: 600;
+  background: var(--color-slate);
+  color: var(--color-ivory);
+  box-shadow: 0 15px 30px rgba(56, 67, 77, 0.2);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.home-login-button:hover,
+.home-login-button:focus-visible {
+  background: #2b353d;
+  transform: translateY(-2px);
+  box-shadow: 0 20px 35px rgba(56, 67, 77, 0.25);
+}
+
+.home-login-button:focus-visible {
+  outline: 2px solid rgba(168, 167, 136, 0.65);
+  outline-offset: 4px;
+}
+
 .home-table-header h3 {
   margin: 0;
   font-size: 1.5rem;
@@ -408,6 +474,17 @@ body {
   .sparkline-col,
   .pricing-col {
     width: auto;
+  }
+}
+
+@media (max-width: 720px) {
+  .home-overview-header {
+    align-items: stretch;
+  }
+
+  .home-login-button {
+    width: 100%;
+    text-align: center;
   }
 }
 
