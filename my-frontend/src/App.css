@@ -268,6 +268,149 @@ body {
   gap: 0.75rem;
 }
 
+.home-table-container {
+  width: min(62.5vw, 1080px);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.home-table-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--color-slate);
+}
+
+.home-table-header p {
+  margin: 0.4rem 0 0;
+  font-size: 0.95rem;
+  color: var(--color-steel);
+}
+
+.home-table-shell {
+  background: var(--color-white);
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(56, 67, 77, 0.12);
+  padding: 1.25rem 1.5rem;
+  overflow-x: auto;
+}
+
+.home-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--color-slate);
+}
+
+.home-table thead th {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  padding-bottom: 0.75rem;
+  color: var(--color-steel);
+}
+
+.home-table tbody tr {
+  border-top: 1px solid rgba(56, 67, 77, 0.08);
+}
+
+.home-table tbody tr:first-child {
+  border-top: none;
+}
+
+.home-table tbody th,
+.home-table tbody td {
+  padding: 1rem 0;
+  vertical-align: middle;
+}
+
+.home-table tbody th {
+  text-align: left;
+  font-size: 1rem;
+  font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.ticker-symbol {
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+}
+
+.ticker-name {
+  font-size: 0.85rem;
+  color: var(--color-steel);
+}
+
+.sparkline {
+  display: block;
+  width: 100%;
+  max-width: 160px;
+}
+
+.sparkline-col {
+  width: 220px;
+}
+
+.pricing-col {
+  width: 200px;
+}
+
+.pricing-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.price-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-slate);
+}
+
+.perf-positive .price-value {
+  color: var(--color-olive);
+}
+
+.perf-negative .price-value {
+  color: var(--color-steel);
+}
+
+.price-performance {
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+}
+
+.price-performance.perf-positive {
+  color: var(--color-olive);
+  background: rgba(168, 167, 136, 0.18);
+}
+
+.price-performance.perf-negative {
+  color: var(--color-steel);
+  background: rgba(113, 133, 151, 0.18);
+}
+
+@media (max-width: 960px) {
+  .home-table-container {
+    width: 100%;
+  }
+
+  .home-table-shell {
+    padding: 1rem;
+  }
+
+  .sparkline-col,
+  .pricing-col {
+    width: auto;
+  }
+}
+
 .auth-panel {
   gap: 1.5rem;
 }
