@@ -9,6 +9,8 @@ from typing import List
 class RegisterIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=4)
+    first_name: str = Field(min_length=1, max_length=80)
+    last_name: str = Field(min_length=1, max_length=80)
 
 class LoginIn(BaseModel):
     email: EmailStr
@@ -23,6 +25,8 @@ class TokenOut(BaseModel):
 class UserOut(BaseModel):
     id: int
     email: EmailStr
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
 
 # ---- Wallet ----
 class WalletRowOut(BaseModel):
@@ -42,7 +46,7 @@ class RefreshIn(BaseModel):
 class Indice(BaseModel):
     ticker: str
     full_name: str
-    price: int
+    price: float
     performance: float
 
 class TickerResponse(BaseModel):
@@ -56,7 +60,7 @@ class ErrorResponse(BaseModel):
     error: str
     detail: Optional[str] = None
 
-class Stocks(BaseModel):
+class StocksIn(BaseModel):
     # --- state ---
     long_name: str
     ticker: str
@@ -108,4 +112,19 @@ class Stocks(BaseModel):
     sharpe_1y: int
     sortino_1y: int
 
-# pyarrow, fastparquet
+class StocksRowOut(BaseModel):
+    # --- state ---
+    ticker: str
+    full_name: str
+    weight: int
+    price: int
+    rate: int
+    principal: int
+    market_worth: int
+    quantity: int
+    price_at_buy: int
+    rate_at_buy: int
+    principal_at_buy: int
+    yld: int
+    performance: int
+    created_at: str
