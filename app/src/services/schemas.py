@@ -16,6 +16,22 @@ class LoginIn(BaseModel):
     email: EmailStr
     password: str
 
+class Balance(BaseModel):
+    amount: int = Field(alias="principal")
+
+
+class BalanceIn(BaseModel):
+    amount: float  # Changer int en float pour supporter Decimal
+    class Config:
+        populate_by_name = True
+
+
+class Favorite(BaseModel):
+    ticker: str
+    full_name: str
+    price: float | None
+    performance: float | None
+
 class TokenOut(BaseModel):
     access_token: str
     refresh_token: str
@@ -112,7 +128,7 @@ class StocksIn(BaseModel):
     sharpe_1y: int
     sortino_1y: int
 
-class StocksRowOut(BaseModel):
+class PortfolioFlow(BaseModel):
     # --- state ---
     ticker: str
     full_name: str
