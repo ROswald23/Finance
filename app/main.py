@@ -1,4 +1,4 @@
-# app/main.py
+# app/main.py uvicorn app.main:app --reload
 import numpy as np
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
@@ -7,17 +7,19 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from app.db import get_db
 from app.src.services.schemas import RegisterIn, LoginIn, TokenOut, UserOut, WalletRowOut, WalletCreateIn, Indice, \
-    TickerResponse, ErrorResponse
+    TickerResponse, ErrorResponse, StocksRowOut
 from app.security import hash_password, verify_password, create_token_pair, decode_token
 from app.deps import get_current_user, CurrentUser
 from app.src.services.schemas import RefreshIn
-from .src.services.compute import ticker_indicators, convert_numpy_types
+from app.src.services.compute import ticker_indicators, convert_numpy_types, get_indexes_list, indexes_metrics, \
+    update_indexes_metrics
 # connexion frontend
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Stock Analysis API",
-            description="API for analysing stocks",
+            description="My first API for stock analysis",
             version="1.0.0")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # ou ["*"] en dev
@@ -26,9 +28,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # ---------- Auth ----------
-
-
 @app.post("/auth/register", response_model=UserOut, status_code=201)
 def register(body: RegisterIn, db: Session = Depends(get_db)):
     # email unique ?
@@ -36,13 +37,21 @@ def register(body: RegisterIn, db: Session = Depends(get_db)):
     if exists:
         raise HTTPException(status_code=400, detail="Email déjà utilisé")
     # insertion avec hash direct
+    first_name = body.first_name.strip()
+    last_name = body.last_name.strip()
     db.execute(
-        text("INSERT INTO users (email, password_hash) VALUES (:e, :p)"),
-        {"e": body.email, "p": hash_password(body.password)},
+        text(
+            "INSERT INTO users (email, password_hash, name, surname) "
+            "VALUES (:e, :p, :fn, :ln)"
+        ),
+        {"e": body.email, "p": hash_password(body.password), "fn": first_name, "ln": last_name},
     )
-    user_id = db.execute(text("SELECT id FROM users WHERE email = :e"), {"e": body.email}).scalar_one()
+    user_row = db.execute(
+        text("SELECT id, email, name, surname FROM users WHERE email = :e"),
+        {"e": body.email},
+    ).mappings().one()
     db.commit()
-    return UserOut(id=user_id, email=body.email)
+    return UserOut(**user_row)
 
 
 @app.post("/auth/login", response_model=TokenOut)
@@ -84,16 +93,13 @@ def refresh(body: RefreshIn):
 # ---------- Endpoints /home... ----------
 @app.get("/home", response_model=list[Indice])
 def get_indexes(db: Session = Depends(get_db)):
+    a = get_indexes_list()
+    b = indexes_metrics(a)
+    update_indexes_metrics(b)
     rows = db.execute(text("SELECT ticker, full_name, price, performance FROM indexes")).mappings().all()
     if not rows:
         raise HTTPException(status_code=404, detail="Indexes not found")
     return [dict(r) for r in rows]
-
-
-@app.get("/indicators")
-def get_stock_indicator():
-    indicator = ticker_indicators("tsla", 0.05,  14,  0.02)
-    return indicator
 
 
 @app.get("/news", response_model=list[Indice])
@@ -107,14 +113,17 @@ def get_news(db: Session = Depends(get_db)):
 # ---------- Endpoints /api/me/... ----------
 @app.get("/api/me", response_model=UserOut)
 def get_me(me: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
-    row = db.execute(text("SELECT id, email FROM users WHERE id = :i"), {"i": me.id}).first()
+    row = db.execute(
+        text("SELECT id, email, first_name, last_name FROM users WHERE id = :i"),
+        {"i": me.id},
+    ).mappings().first()
     if not row:
         raise HTTPException(status_code=404, detail="User not found")
-    return UserOut(id=row.id, email=row.email)
+    return UserOut(**row)
 
 
 @app.get("/api/me/wallet", response_model=list[WalletRowOut])
-def get_my_wallet(me: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
+async def get_my_wallet(me: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
     rows = db.execute(
         text("""
             SELECT id, ticker, quantity, to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS') AS created_at
@@ -125,6 +134,20 @@ def get_my_wallet(me: CurrentUser = Depends(get_current_user), db: Session = Dep
         {"uid": me.id},
     ).mappings().all()
     return [dict(r) for r in rows]
+
+# @app.get("/api/me/wallet", response_model=list[StocksRowOut])
+# async def get_my_wallet(me: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
+#     rows = db.execute(
+#         text("""
+#             SELECT ticker, full_name, weight, price, rate, principal, market_worth, quantity, price_at_buy,
+#              rate_at_buy, principal_at_buy, yld, performance, to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SS') AS created_at
+#             FROM stocks
+#             WHERE user_id = :uid
+#             ORDER BY principal DESC
+#         """),
+#         {"uid": me.id},
+#     ).mappings().all()
+#     return [dict(r) for r in rows]
 
 
 @app.post("/api/me/wallet", response_model=WalletRowOut, status_code=201)
@@ -205,9 +228,8 @@ async def root():
         }
     }
 
-@app.get(
-    "/ticker/{ticker}",
-    response_model=TickerResponse,
+@app.get("/indicators/{ticker}",
+        response_model=TickerResponse,
     responses={
         404: {"model": ErrorResponse, "description": "Ticker introuvable"},
         500: {"model": ErrorResponse, "description": "Erreur serveur"}
