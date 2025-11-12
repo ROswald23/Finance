@@ -2,14 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Base layout */
 html,
 body,
 #root {
   height: 100%;
 }
 
-/* Style global du body (en Tailwind) */
 body {
   margin: 0;
   background-color: #fdfced;
@@ -18,7 +16,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Liens (optionnel, tu peux aussi faire ça en Tailwind dans tes composants) */
 a {
   color: #a8a788;
   text-decoration: none;
@@ -29,7 +26,6 @@ a:hover {
   color: #718597;
 }
 
-/* Boutons par défaut (optionnel) */
 button {
   font-family: inherit;
 }
