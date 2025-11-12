@@ -36,13 +36,21 @@ def register(body: RegisterIn, db: Session = Depends(get_db)):
     if exists:
         raise HTTPException(status_code=400, detail="Email déjà utilisé")
     # insertion avec hash direct
+    first_name = body.first_name.strip()
+    last_name = body.last_name.strip()
     db.execute(
-        text("INSERT INTO users (email, password_hash) VALUES (:e, :p)"),
-        {"e": body.email, "p": hash_password(body.password)},
+        text(
+            "INSERT INTO users (email, password_hash, first_name, last_name) "
+            "VALUES (:e, :p, :fn, :ln)"
+        ),
+        {"e": body.email, "p": hash_password(body.password), "fn": first_name, "ln": last_name},
     )
-    user_id = db.execute(text("SELECT id FROM users WHERE email = :e"), {"e": body.email}).scalar_one()
+    user_row = db.execute(
+        text("SELECT id, email, first_name, last_name FROM users WHERE email = :e"),
+        {"e": body.email},
+    ).mappings().one()
     db.commit()
-    return UserOut(id=user_id, email=body.email)
+    return UserOut(**user_row)
 
 
 @app.post("/auth/login", response_model=TokenOut)
@@ -107,10 +115,13 @@ def get_news(db: Session = Depends(get_db)):
 # ---------- Endpoints /api/me/... ----------
 @app.get("/api/me", response_model=UserOut)
 def get_me(me: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
-    row = db.execute(text("SELECT id, email FROM users WHERE id = :i"), {"i": me.id}).first()
+    row = db.execute(
+        text("SELECT id, email, first_name, last_name FROM users WHERE id = :i"),
+        {"i": me.id},
+    ).mappings().first()
     if not row:
         raise HTTPException(status_code=404, detail="User not found")
-    return UserOut(id=row.id, email=row.email)
+    return UserOut(**row)
 
 
 @app.get("/api/me/wallet", response_model=list[WalletRowOut])

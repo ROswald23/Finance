@@ -9,6 +9,8 @@ from typing import List
 class RegisterIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=4)
+    first_name: str = Field(min_length=1, max_length=80)
+    last_name: str = Field(min_length=1, max_length=80)
 
 class LoginIn(BaseModel):
     email: EmailStr
@@ -23,6 +25,8 @@ class TokenOut(BaseModel):
 class UserOut(BaseModel):
     id: int
     email: EmailStr
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
 
 # ---- Wallet ----
 class WalletRowOut(BaseModel):

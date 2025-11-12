@@ -45,6 +45,7 @@ function App() {
   const token = useAuth((state) => state.accessToken)
   const clear = useAuth((state) => state.clear)
   const [view, setView] = useState<View>(token ? 'wallet' : 'home')
+  const isAuthView = view === 'login' || view === 'register'
 
   const activeNav = useMemo<NavView>(() => {
     if (view === 'login' || view === 'register') {
@@ -60,7 +61,7 @@ function App() {
   }
 
   const renderHomePanels = () => (
-    <section className="content-panels">
+    <section className="content-panels home-side-panels">
       <article className="panel highlight">
         <h3>Vision rapide</h3>
         <p>
@@ -100,10 +101,12 @@ function App() {
                 widgets associés. Ce canevas fournit la structure principale de votre application.
               </p>
             </header>
-            {renderHomePanels()}
-            <article className="panel seamless">
-              <HomePage onLoginClick={() => goTo('login')} />
-            </article>
+            <div className="home-split">
+              <article className="panel seamless home-table-panel">
+                <HomePage onLoginClick={() => goTo('login')} />
+              </article>
+              <div className="home-panels-stack">{renderHomePanels()}</div>
+            </div>
           </>
         )
       case 'wallet':
@@ -169,34 +172,36 @@ function App() {
       case 'login':
       case 'register':
         return (
-          <section className="panel auth-panel">
+          <div className="auth-frame">
             <div className="auth-tabs">
               <button
                 className={view === 'login' ? 'auth-tab active' : 'auth-tab'}
                 onClick={() => goTo('login')}
+                type="button"
               >
                 Se connecter
               </button>
               <button
                 className={view === 'register' ? 'auth-tab active' : 'auth-tab'}
                 onClick={() => goTo('register')}
+                type="button"
               >
                 Créer un compte
               </button>
             </div>
-            <div className="auth-forms">
-              {view === 'login' ? (
-                <LoginForm onLoggedIn={() => goTo('wallet')} />
-              ) : (
-                <RegisterForm onRegistered={() => goTo('login')} />
-              )}
-            </div>
-          </section>
+            {view === 'login' ? (
+              <LoginForm onLoggedIn={() => goTo('wallet')} />
+            ) : (
+              <RegisterForm onRegistered={() => goTo('login')} />
+            )}
+          </div>
         )
       default:
         return null
     }
   }
+
+  const mainClassName = isAuthView ? 'content-area auth-view' : 'content-area'
 
   return (
     <div className="app-container">
@@ -246,7 +251,7 @@ function App() {
         </div>
       </aside>
 
-      <main className="content-area">
+      <main className={mainClassName}>
         <div className="content-scroll">{renderContent()}</div>
       </main>
     </div>

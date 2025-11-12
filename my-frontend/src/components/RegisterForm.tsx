@@ -1,89 +1,130 @@
 import { useState } from "react";
 import { apiFetch } from "../lib/api";
 
-type RegisterOut = { id: number; email: string };
+type RegisterOut = { id: number; email: string; first_name?: string | null; last_name?: string | null };
 
-export default function RegisterForm({ onRegistered }: { onRegistered: () => void }) {
+type RegisterFormProps = {
+  onRegistered: () => void;
+};
+
+export default function RegisterForm({ onRegistered }: RegisterFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [err, setErr] = useState<string | null>(null);
-  const [ok, setOk] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setErr(null); setOk(null); setLoading(true);
+    setErr(null);
+    setLoading(true);
+    let shouldRedirect = false;
+    const payload = {
+      email: email.trim(),
+      password,
+      first_name: firstName.trim(),
+      last_name: lastName.trim(),
+    };
+
     try {
       const res = await apiFetch<RegisterOut>("/auth/register", {
         method: "POST",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(payload),
       });
-      setOk(`Compte créé pour ${res.email}. Vous pouvez vous connecter.`);
-      onRegistered(); // basculer vers login
-    } catch (e: any) {
-      setErr(e.message);
+      shouldRedirect = Boolean(res?.email);
+    } catch (error: any) {
+      setErr(error.message);
     } finally {
       setLoading(false);
+    }
+
+    if (shouldRedirect) {
+      onRegistered();
     }
   }
 
   return (
-  <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-    <div className="w-full max-w-sm bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-      <h2 className="text-2xl font-semibold text-gray-900 mb-6">Créer un compte</h2>
+    <form className="auth-card" onSubmit={handleSubmit} noValidate>
+      <header className="auth-card-header">
+        <h2 className="auth-title">Créer un compte</h2>
+        <p className="auth-subtitle">Rejoignez la plateforme et personnalisez votre expérience.</p>
+      </header>
 
-      <div className="space-y-4">
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+      <div className="auth-fields">
+        <div className="auth-field-row">
+          <div className="auth-field">
+            <label htmlFor="register-first-name" className="auth-label">
+              Prénom
+            </label>
+            <input
+              id="register-first-name"
+              type="text"
+              className="auth-input"
+              value={firstName}
+              onChange={(event) => setFirstName(event.target.value)}
+              autoComplete="given-name"
+              required
+            />
+          </div>
+
+          <div className="auth-field">
+            <label htmlFor="register-last-name" className="auth-label">
+              Nom
+            </label>
+            <input
+              id="register-last-name"
+              type="text"
+              className="auth-input"
+              value={lastName}
+              onChange={(event) => setLastName(event.target.value)}
+              autoComplete="family-name"
+              required
+            />
+          </div>
+        </div>
+
+        <div className="auth-field">
+          <label htmlFor="register-email" className="auth-label">
             Email
           </label>
           <input
-            id="email"
+            id="register-email"
             type="email"
+            className="auth-input"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(event) => setEmail(event.target.value)}
+            autoComplete="email"
             required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
 
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-            Mot de passe (min 8)
+        <div className="auth-field">
+          <label htmlFor="register-password" className="auth-label">
+            Mot de passe (min. 8 caractères)
           </label>
           <input
-            id="password"
+            id="register-password"
             type="password"
+            className="auth-input"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(event) => setPassword(event.target.value)}
+            autoComplete="new-password"
+            minLength={8}
             required
-            minLength={2}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
-
-        <button
-          onClick={handleSubmit}
-          disabled={loading}
-          type="button"
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? "..." : "S'inscrire"}
-        </button>
-
-        {ok && (
-          <p className="text-sm text-green-700 bg-green-50 px-3 py-2 rounded-md">
-            {ok}
-          </p>
-        )}
-
-        {err && (
-          <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-md">
-            {err}
-          </p>
-        )}
       </div>
-    </div>
-  </div>
-);
+
+      {err && (
+        <p className="auth-feedback auth-feedback-error" role="alert">
+          {err}
+        </p>
+      )}
+
+      <button type="submit" className="auth-submit" disabled={loading}>
+        {loading ? "Création en cours…" : "S'inscrire"}
+      </button>
+    </form>
+  );
 }
