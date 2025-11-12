@@ -50,10 +50,10 @@ function Sparkline({ ticker, performance }: SparklineProps) {
   const min = Math.min(...series);
   const max = Math.max(...series);
   const range = max - min || 1;
-  const strokeColor = performance >= 0 ? "var(--color-olive)" : "var(--color-steel)";
+  const strokeColor = performance >= 0 ? "green" : "red";
   const fillColor = performance >= 0
-    ? "rgba(168, 167, 136, 0.2)"
-    : "rgba(113, 133, 151, 0.2)";
+    ? "rgba(144, 238, 144, 0.2)"
+    : "rgba(230, 0, 0, 0.2)";
 
   const path = series
     .map((value, index) => {
@@ -122,20 +122,17 @@ export default function HomeTable() {
   return (
     <section className="home-table-container" aria-label="Indices de marché">
       <header className="home-table-header">
-        <div>
-          <h3>Indices &amp; valeurs suivies</h3>
-          <p>Vue instantanée des titres clés et de leur dynamique récente.</p>
-        </div>
+
       </header>
       <div className="home-table-shell">
         <table className="home-table">
           <thead>
             <tr>
-              <th scope="col">Indice</th>
-              <th scope="col" className="sparkline-col">
+              <th scope="col" style={{ textAlign: "left" }}>Indice</th>
+              <th scope="col" className="sparkline-col" style={{ textAlign: "left" }}>
                 Tendance
               </th>
-              <th scope="col" className="pricing-col">
+              <th scope="col" className="pricing-col text-left">
                 Valorisation
               </th>
             </tr>
