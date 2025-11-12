@@ -1,14 +1,20 @@
 from __future__ import annotations
 import numpy as np
 import pandas as pd
-import datetime
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+from fastapi import Depends
 from datetime import datetime, timedelta
 import yfinance as yf
 import tradingview_ta as ta
-import os, time, math, pathlib
+import time, pathlib
 from functools import lru_cache
 import streamlit as st
 from sqlalchemy.testing.plugin.plugin_base import before_test
+
+from app.db import SessionLocal
+
+# from app.db import get_db
 
 DATA_DIR = pathlib.Path("data_cache")
 DATA_DIR.mkdir(exist_ok=True)
@@ -209,9 +215,13 @@ suffix_map = {
             "SA": INDEX_TICKERS["Ibovespa (Brazil)"],  # Brésil
             "MX": INDEX_TICKERS["IPC (Mexico)"],  # Mexique
         }
+
+
 # ---------- Cache disque : download + sauvegarde parquet ----------
 def _cache_path(ticker: str) -> pathlib.Path:
     return DATA_DIR / f"{ticker.upper()}_history.parquet"
+
+
 
 # --- acces info ---
 @lru_cache(maxsize=256)
@@ -292,14 +302,14 @@ def _yrl_history(ticker: str) -> pd.DataFrame:
     start = now - pd.Timedelta(days=252)
     if p.exists():
         df = pd.read_parquet(p)
-        df.mask((df['Date'] >= now) & (df['Date'] <= start))
+        # df.mask((df['Date'] >= now) & (df['Date'] <= start))
     else:
-        df = _yf_ticker(ticker).history(period="1y")
+        df = _yf_ticker(ticker).history(period="1y", interval="1d")
         if df.empty:
             return df
         df = df.reset_index()
         df["Date"] = pd.to_datetime(df["Date"])
-        keep = [c for c in ["Date","Open","High","Low","Close","Adj Close","Volume"] if c in df.columns]
+        keep = [c for c in ["Date","Open","High","Low","Close","Volume"] if c in df.columns]
         df = df[keep]
         df.to_parquet(p, index=False)
     return df
@@ -307,7 +317,7 @@ def _yrl_history(ticker: str) -> pd.DataFrame:
 
 # --- indicators ----
 def ticker_indicators(ticker: str, p = 0.05, n = 14, rf_ann = 0.02) -> dict:
-    ticker_eve_price: int
+    ticker_eve_price: float
     t = _yf_ticker(ticker)
     fi = t.fast_info
 
@@ -331,14 +341,16 @@ def ticker_indicators(ticker: str, p = 0.05, n = 14, rf_ann = 0.02) -> dict:
     sector = t.info.get("sector")
     industry = t.info.get("industry")
     classe = t.info.get("quoteType")
+    print("type: ", classe)
     payout_ratio = t.info["payoutRatio"]
     shares_outstanding = t.info['sharesOutstanding']
-    market_cap = t.info.get("marketCap", np.nan)
-    eps_ttm = t.info.get("trailingEps", np.nan)
+    market_cap = t.info.get("marketCap", None)
+    eps_ttm = t.info.get("trailingEps", None)
 
     if ticker_eve_price is None:
         try:
-            hist = t.history(period="10d", interval="1d", auto_adjust=False)
+            # hist = t.history(period="10d", interval="1d", auto_adjust=False)
+            hist = _yrl_history(ticker)
             if not hist.empty:
                 ticker_eve_price = hist["Close"].iloc[-2]
         except Exception:
@@ -366,22 +378,22 @@ def ticker_indicators(ticker: str, p = 0.05, n = 14, rf_ann = 0.02) -> dict:
         ni_ttm = float(fin_a.loc["Net Income"].iloc[0])
 
     # Equity (dernier bilan)
-    equity = np.nan
+    equity = None
     if not (bs_a is None or bs_a.empty) and "Stockholders Equity" in bs_a.index:
         equity = float(bs_a.loc["Stockholders Equity"].iloc[0])
     elif not (bs_q is None or bs_q.empty) and "Stockholders Equity" in bs_q.index:
         equity = float(bs_q.loc["Stockholders Equity"].iloc[0])
 
     # ROE ≈ NI_TTM / Equity
-    roe = (ni_ttm / equity) if (not np.isnan(ni_ttm) and not np.isnan(equity) and equity != 0) else np.nan
+    roe = (ni_ttm / equity) if (not np.isnan(ni_ttm) and not np.isnan(equity) and equity != 0) else None
 
     # P/E (trailing)
-    pe = t.info.get("trailingPE", np.nan)
+    pe = t.info.get("trailingPE", None)
     if (not pe) and (eps_ttm and eps_ttm != 0):
         pe = ticker_price / eps_ttm
 
     # P/CF (par action) -> Price / (FCF/share)
-    price_to_cash_flow_ratio = np.nan
+    price_to_cash_flow_ratio = None
     if (not np.isnan(fcf_ttm)) and (not np.isnan(shares_outstanding)) and shares_outstanding > 0:
         fcf_per_share = fcf_ttm / shares_outstanding
         if fcf_per_share != 0:
@@ -392,7 +404,7 @@ def ticker_indicators(ticker: str, p = 0.05, n = 14, rf_ann = 0.02) -> dict:
 
     # FCF yield = FCF / MarketCap
     financial_cash_flow_yield = (fcf_ttm / market_cap) if (
-            not np.isnan(fcf_ttm) and not np.isnan(market_cap) and market_cap > 0) else np.nan
+            not np.isnan(fcf_ttm) and not np.isnan(market_cap) and market_cap > 0) else None
 
     # --- dataframe element ---
     ticker_df = _yrl_history(ticker)
@@ -459,11 +471,11 @@ def ticker_indicators(ticker: str, p = 0.05, n = 14, rf_ann = 0.02) -> dict:
 
     # Information Ratio = (Perf ann relative) / TE
     rel_ann = ((1 + ticker_series.mean()) ** N_TRADING - 1) - ((1 + market_series.mean()) ** N_TRADING - 1)
-    ir_1y = rel_ann / (te_1y / 100) if te_1y != 0 else np.nan
+    ir_1y = rel_ann / (te_1y / 100) if te_1y != 0 else None
 
     # treynor
     er_ann = (1 + ticker_series.mean()) ** N_TRADING - 1
-    treynor = (er_ann - rf_ann) / ticker_beta_1y if ticker_beta_1y != 0 else np.nan
+    treynor = (er_ann - rf_ann) / ticker_beta_1y if ticker_beta_1y != 0 else None
 
     # sharpe ratio
     rf_daily = (1 + rf_ann) ** (1 / N_TRADING) - 1
@@ -474,7 +486,7 @@ def ticker_indicators(ticker: str, p = 0.05, n = 14, rf_ann = 0.02) -> dict:
     neg = excess.copy()
     neg[neg > 0] = 0
     semidev = np.sqrt((neg ** 2).mean())
-    sortino_1y = (excess.mean() * np.sqrt(N_TRADING)) / semidev if semidev != 0 else np.nan
+    sortino_1y = (excess.mean() * np.sqrt(N_TRADING)) / semidev if semidev != 0 else None
 
     # expected return
     market_annual = (1 + market_series.mean()) ** N_TRADING - 1
@@ -496,7 +508,7 @@ def ticker_indicators(ticker: str, p = 0.05, n = 14, rf_ann = 0.02) -> dict:
     df = df.dropna(subset=["return", "log_return"])
 
     n_years = (df["Date"].iloc[-1] - df["Date"].iloc[0]).days / 365.25
-    growth_rate = (1 + ticker_return) ** (1 / n_years) - 1 if n_years > 0 else np.nan
+    growth_rate = (1 + ticker_total_return) ** (1 / n_years) - 1 if n_years > 0 else None
 
     volatility_daily = df["log_return"].std(ddof=1)
     volalitity_annual = volatility_daily * np.sqrt(N_TRADING) if pd.notna(volatility_daily) else np.nan
@@ -506,9 +518,9 @@ def ticker_indicators(ticker: str, p = 0.05, n = 14, rf_ann = 0.02) -> dict:
                 "sector": sector,
                 "industry": industry,
                 "type": classe,
-                "Price": ticker_price,
-                "Ticker eve price": ticker_eve_price,
-                "Ticker performance": ticker_performance,
+                "Price": round(ticker_price,2),
+                "Ticker eve price": round(ticker_eve_price,2),
+                "Ticker performance": round(ticker_performance*100,2),
                 "market": market,
                 "Benchmark": market_ticker,
                 "eps": epss,
@@ -516,20 +528,20 @@ def ticker_indicators(ticker: str, p = 0.05, n = 14, rf_ann = 0.02) -> dict:
 
                 "ebitda": ebitda,
                 "shares outstanding": shares_outstanding,
-                "ticker total return": ticker_total_return,
-                "market return": market_returns,
-                "price earning ratio": price_earning_ratio,
+                "ticker total return": round(ticker_total_return,4),
+                "market return": round(market_returns,4),
+                "price earning ratio": round(price_earning_ratio,2),
                 "book value": book_value,
-                "price to book ratio": price_to_book_ratio,
+                "price to book ratio": round(price_to_book_ratio,2),
 
 
-                "expected return": expected_return_capm,
-                #"cagr": growth_rate,
-                "roe" : roe,
+                "expected return": round(expected_return_capm,4),
+                "cagr": round(growth_rate,4),
+                "roe" : round(roe*100,2),
                 "dividend yield": dividend_yield,
                 "financial cash flow": financial_cash_flow_ttm,
                 "Price to Cash Flow Ratio": price_to_cash_flow_ratio,
-                "earning yield": earning_yield,
+                "earning yield": round(earning_yield*100,2),
                 "financial cash flow yield": financial_cash_flow_yield,
                 "duration dividends": duration_div,
                 "duration financial cash flow": duration_fcf,
@@ -606,11 +618,9 @@ def compute_beta_alpha(xr: pd.Series, xm: pd.Series):
 def rate_beta_10y(ticker: str, market: str) -> float:
     y10 = _history_close(market)
     stock_ret = _history_close(ticker)
-    y10 = y10 / 1000.0
+    y10 = y10 / 100.0
     # stock_ret = stock_ret.diff()
     dy = y10.diff()
-    stock_ret
-    y10
     idx = stock_ret.dropna().index.intersection(dy.dropna().index)
     print('data idx', idx)
     if len(idx) < 60:
@@ -636,6 +646,84 @@ def convert_numpy_types(obj):
     return obj
 
 
-a = ticker_indicators("tsla", 0.05,  14,  0.02)
-a
-print(a)
+def indexes_metrics(indexes: list) -> list:
+    """Calcule les métriques (prix et performance) pour chaque ticker"""
+    results = []
+
+    for ticker in indexes:
+        try:
+            # Récupération du prix actuel
+            price = _yf_ticker(ticker).fast_info.last_price
+            eve_price = None
+            performance = None
+
+            # Récupération du prix de veille
+            try:
+                hist = _yrl_history(ticker)
+                if not hist.empty:
+                    eve_price = hist["Close"].iloc[-2]
+                    # Calcul de la performance
+                    if eve_price and eve_price != 0:
+                        performance = ((price - eve_price) / eve_price) * 100
+
+
+            except Exception:
+                pass
+            # convert_numpy_types(performance)
+            # convert_numpy_types(price)
+            results.append({
+                "ticker": ticker,
+                "price": float(price),
+                "performance": float(performance)
+            })
+
+        except Exception as e:
+            # En cas d'erreur sur un ticker, on l'ajoute quand même avec des valeurs None
+            results.append({
+                "ticker": ticker,
+                "price": None,
+                "performance": None
+            })
+    return results
+
+
+def get_indexes_list() -> list:
+    """Récupère la liste des tickers depuis la base de données"""
+    db = SessionLocal()  # Créer directement une session
+    try:
+        rows = db.execute(text("SELECT ticker FROM indexes;")).mappings().fetchall()
+        return [row['ticker'] for row in rows if row['ticker']]
+    finally:
+        db.close()
+
+
+def update_indexes_metrics(metrics: list):
+    db = SessionLocal()
+    try:
+        # Mettre à jour
+        for metric in metrics:
+            if metric["price"] is not None:
+                db.execute(
+                    text("""
+                        UPDATE indexes 
+                        SET price = :price, 
+                            performance = :performance
+                        WHERE ticker = :ticker
+                    """),
+                    metric
+                )
+
+        db.commit()
+        print("✅ Base de données mise à jour avec succès!")
+
+    except Exception as e:
+        db.rollback()
+        print(f"❌ Erreur: {e}")
+    finally:
+        db.close()
+
+
+
+# a = ticker_indicators("BTC-EUR", 0.05,  14,  0.02)
+# # a
+# print(a)
